@@ -1,0 +1,132 @@
+Sì — se prevedi di fare ricerche/filtri su campi dentro meta (es. email, experienceId) è consigliabile convertire meta a tipo Json nel DB. Di seguito le ragioni brevi, e poi i passi esatti, senza salto.
+
+Perché conviene
+
+Query/WHERE su chiavi interne molto più semplici e performanti (Postgres jsonb/SQLite json1).
+Eviti parsing runtime (read-time) e trasformazioni fragili.
+Più affidabile per aggregazioni, export e indici parziali.
+Contro/attenzioni
+
+Migration da String→Json va fatta con backup e conversione dei dati esistenti.
+Alcune funzionalità (full-text) richiedono workarounds a seconda del DB.
+Se usi SQLite il supporto JSON è meno potente che in Postgres ma comunque utile.
+Passi precisi (seguire esattamente — root del progetto)
+
+PREP: backup
+
+Ferma server.
+Backup DB e codice: Copy-Item .\prisma\dev.db .\prisma\dev.db.bak -Force git add -A && git commit -m "WIP backup before meta->Json migration" (opzionale se repo inizializzato)
+A) Aggiorna schema Prisma
+3) Apri prisma/schema.prisma e modifica model Audit: sostituisci
+meta String?
+con
+meta Json?
+
+Salva file.
+
+B) Crea migration e applicala
+4) Esegui:
+npx prisma migrate dev --name meta_json
+(Prisma creerà/altererà la colonna — se il DB non permette alter direttamente, Prisma applicherà i passi necessari)
+
+C) Converti i valori esistenti (se già JSON strings)
+5) Crea script di migrazione che legge rows e scrive oggetti (root): ./scripts/normalize-meta-to-json.js
+
+Contenuto ESATTO:
+
+const { PrismaClient } = require('@prisma/client');
+(async () => {
+  const prisma = new PrismaClient();
+  try {
+    console.log('Start normalize meta -> Json');
+    const batch = 200;
+    let skip = 0;
+    while (true) {
+      const rows = await prisma.audit.findMany({ orderBy: { id: 'asc' }, take: batch, skip });
+      if (!rows.length) break;
+      for (const r of rows) {
+        if (!r.meta) continue;
+        // if meta already JSON type after schema change, skip if prisma returns object
+        if (typeof r.meta !== 'string') continue;
+        try {
+          const obj = JSON.parse(r.meta);
+          await prisma.audit.update({ where: { id: r.id }, data: { meta: obj } });
+          console.log('Updated id', r.id);
+        } catch (e) {
+          // not JSON parseable: wrap as raw
+          await prisma.audit.update({ where: { id: r.id }, data: { meta: { raw: String(r.meta) } } });
+          console.log('Wrapped id', r.id);
+        }
+      }
+      if (rows.length < batch) break;
+      skip += batch;
+    }
+    console.log('Done');
+  } catch (e) {
+    console.error('Error', e);
+  } finally {
+    await prisma.$disconnect();
+  }
+})();
+
+Esegui: node ./scripts/normalize-meta-to-json.js
+D) Aggiorna codice che scrive meta
+7) In src/utils/audit.js (logAudit): change to pass object (not JSON string):
+
+Replace metaToString usage and prisma.audit.create meta: metaStr with meta: maskSensitive(meta) (object) Example data: await prisma.audit.create({ data: { actorHostId, action, entityType, entityId: entityId != null ? Number(entityId) : null, meta: maskSensitive(meta), // object traceId, ip, userAgent, service } });
+Rigenera client: npx prisma generate
+E) Test
+9) Riavvia server:
+npm run dev
+10) Crea test events (login, booking) e controlla in Prisma Studio che meta ora sia object (not a JSON string).
+npx prisma studio
+11) Query examples (Prisma):
+// find audits where meta.email = 'x'
+await prisma.audit.findMany({ where: { meta: { path: ['email'], equals: 'host@demo.local' } } });
+(or in raw SQL for SQLite use json_extract)
+
+F) Rollback (se necessario)
+12) Se qualcosa va storto: ripristina DB:
+Copy-Item .\prisma\dev.db.bak .\prisma\dev.db -Force
+Ripristina codice dal backup o git.
+
+Note pratiche
+
+Se usi SQLite, Prisma migration will convert column; queries on JSON use json_extract (Prisma supports some path operations but use $queryRaw for complex).
+In Postgres prefer meta Json or JsonB (better indexing).
+After migration, consider adding expression indexes on meta->>'email' if you query often.
+Vuoi che:
+
+generi lo script normalize-meta-to-json.js pronto? (Sì/No)
+generi il patch per src/utils/audit.js per salvare oggetti meta invece di stringhe? (Sì/No)
+Dimmi 1/2/entrambi.
+
+Sì — puoi rimandare la migrazione a Json senza problemi. Breve piano operativo per tener tutto sicuro e pronto per la migrazione futura.
+
+Cosa fare ora (minimo necessario)
+
+Non toccare schema.prisma per meta (lascia meta String?).
+Mantieni logAudit che salva meta come JSON string (JSON.stringify(maskSensitive(meta))) — già fatto.
+Mantieni parseMetaSmart nell’endpoint /admin/audits per leggere e trasformare le stringhe storiche.
+Documenta in AUDIT_SPEC.md che meta è JSON-string per ora e che ci sarà una futura migrazione a Json.
+Prevenire problemi futuri
+
+Evita di aggiungere nuove voci meta non JSON-serializzabili (usa oggetti/primitive).
+Quando scrivi nuovi audit, usa sempre maskSensitive e JSON.stringify(meta) per coerenza.
+Aggiungi test (integration) che verificano che meta sia serializzabile JSON.
+Cosa preparare ora per rendere la migrazione facile
+
+Script di normalizzazione (normalize-meta-to-json.js) pronto (non eseguirlo ora).
+Aggiornare logAudit per supportare sia string che object (già fatto).
+Lista query/report che vorrai eseguire su campi interni a meta (es. meta.email, meta.experienceId) — ti servirà per decidere indici/DB target.
+Quando deciderai DB/tempo per migrare
+
+Se Postgres: migrazione diretta a JsonB + sfruttare indici GIN/expr.
+Se SQLite: usa json1 functions; le query sono possibili ma più limitate.
+Procedura standard: backup DB → prisma schema change → prisma migrate → esegui script di normalizzazione → test.
+Se vuoi, preparo ora:
+A) lo script normalize-meta-to-json.js pronto (non eseguito),
+B) la patch per cambiare logAudit a salvare oggetti (per applicare dopo migration),
+C) una checklist di test per la migrazione.
+
+Quale vuoi che prepari adesso? (A / B / C / nessuno)

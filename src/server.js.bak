@@ -40,9 +40,8 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(cookieParser());
-app.use(auditRequest);
 app.use('/admin/static', express.static(path.join(__dirname, '../public/admin')));
-
+app.use(auditRequest);
 
 // Rate limiter for login (Redis-backed if available, otherwise in-memory)
 let RedisStore = null;
@@ -351,12 +350,9 @@ if (!status || !['ACCEPTED', 'REJECTED'].includes(String(status).toUpperCase()))
   return res.status(400).json({ error: 'status is required and must be ACCEPTED or REJECTED' });
 }
 const newStatus = String(status).toUpperCase();
-const traceId = req && req.traceId ? req.traceId : require('crypto').randomUUID();
-const ip = req ? (req.headers['x-forwarded-for'] || req.socket.remoteAddress) : null;
-const userAgent = req ? req.get('user-agent') : null;
 
 // transaction: check ownership, prevent invalid transition, update and create audit
-const result = await prisma.$transaction(async (tx) => {
+const updated = await prisma.$transaction(async (tx) => {
   const br = await tx.bookingRequest.findUnique({
     where: { id },
     include: {
@@ -387,37 +383,17 @@ const result = await prisma.$transaction(async (tx) => {
         action: 'booking_update',
         entityType: 'BookingRequest',
         entityId: id,
-        meta: JSON.stringify({ prev: br.status, next: newStatus }),
-        traceId: traceId,
-        ip: ip,
-        userAgent: userAgent,
-        service: process.env.SERVICE_NAME || null
+        meta: JSON.stringify({ prev: br.status, next: newStatus })
       }
     });
   } catch (e) {
     // ignore if Audit model not present
   }
 
-  const prevStatus = br.status;
-  return { u, prevStatus };
+  return u;
 });
 
-// audit non-blocking con trace (aggiungi subito dopo la transaction)
-const updated = result.u;
-const prevStatus = result.prevStatus;
 
-if (req && req.audit) {
-  try {
-    req.audit({
-      action: 'booking_update',
-      actorHostId: req.currentHost ? req.currentHost.id : null,
-      entityType: 'BookingRequest',
-      entityId: id,
-      meta: { prev: prevStatus, next: newStatus },
-      status: 200
-    });
-  } catch (e) { /* swallow */ }
-}
 // send notification email (reuse existing template/transport)
 try {
   const brFull = await prisma.bookingRequest.findUnique({ where: { id }, include: { experience: { include: { host: true } } } });

@@ -1,0 +1,96 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Host {
+  id            Int            @id @default(autoincrement())
+  name          String
+  email         String         @unique
+  password      String
+  phone         String?
+  website       String?
+  locationName  String?
+  region        String?
+  country       String?
+  status        String         @default("PENDING")
+  role          String         @default("HOST")
+  experiences   Experience[]
+  refreshTokens RefreshToken[]
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+}
+
+model RefreshToken {
+  id        Int       @id @default(autoincrement())
+  token     String    @unique
+  hostId    Int
+  host      Host      @relation(fields: [hostId], references: [id])
+  createdAt DateTime  @default(now())
+  revoked   Boolean   @default(false)
+  expiresAt DateTime?
+}
+
+model Experience {
+  id              Int              @id @default(autoincrement())
+  title           String
+  description     String?
+  locationName    String
+  priceBase       Float            @default(0)
+  durationMinutes Int              @default(120)
+  type            String           @default("RECREATIONAL")
+  level           String           @default("BEGINNER")
+  profile         String?
+  entryType       String?
+  environment     String?
+  minDepthM       Int?
+  maxDepthM       Int?
+  host            Host             @relation(fields: [hostId], references: [id])
+  hostId          Int
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  requests        BookingRequest[]
+}
+
+model BookingRequest {
+  id            Int        @id @default(autoincrement())
+  experience    Experience @relation(fields: [experienceId], references: [id])
+  experienceId  Int
+  userName      String
+  userEmail     String
+  requestedDate DateTime
+  requestedSlot String?
+  notes         String? // <-- aggiunto
+  status        String     @default("PENDING")
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+}
+
+model Audit {
+  id          Int      @id @default(autoincrement())
+  actorHostId Int?
+  action      String
+  entityType  String
+  entityId    Int?
+  meta        String? // JSON serialized as string
+  createdAt   DateTime @default(now())
+  traceId String? 
+  ip String?
+  userAgent String?
+  service String?
+}
+
+// Allowed string values (reference):
+// Host.status: "PENDING", "APPROVED", "REJECTED"
+// Experience.type: "RECREATIONAL", "SNORKELING", "TECHNICAL"
+// Experience.level: "BEGINNER", "ADVANCED", "TECHNICAL"
+// BookingRequest.status: "PENDING", "ACCEPTED", "REJECTED", "CANCELLED"

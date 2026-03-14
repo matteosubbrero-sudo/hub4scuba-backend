@@ -1,0 +1,30 @@
+const crypto = require('crypto');
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+function maskSensitive(obj) {
+  if (!obj) return null;
+  const copy = JSON.parse(JSON.stringify(obj));
+  const sensitive = ['password','pwd','cardnumber','cvv','token','authorization','refreshToken'];
+  function walk(o){
+    if (o && typeof o === 'object') {
+      for (const k of Object.keys(o)) {
+        if (sensitive.includes(k.toLowerCase())) o[k] = '[REDACTED]';
+        else walk(o[k]);
+      }
+    }
+  }
+  walk(copy);
+  return copy;
+}
+
+/**
+
+logAudit accepts:
+action (string)
+actorHostId (int|null)
+entityType (string)
+entityId (int|null)
+meta (object|string|null) -> stored as JSON string in meta column
+req (optional) to capture ip/userAgent/traceId (not stored in current model) */ async function logAudit({ action, actorHostId = null, entityType = '', entityId = null, meta = null }) { try { const metaStr = meta ? (typeof meta === 'string' ? meta : JSON.stringify(maskSensitive(meta))) : null; await prisma.audit.create({ data: { actorHostId: actorHostId || null, action, entityType, entityId: entityId != null ? Number(entityId) : null, meta: metaStr } }); } catch (e) { console.error('audit.log error', e); } }
+module.exports = { logAudit, maskSensitive };

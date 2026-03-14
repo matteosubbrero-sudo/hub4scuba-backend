@@ -1,11 +1,12 @@
 const crypto = require('crypto');
-const prisma = require('../prismaClient'); // usa prismaClient condiviso
+const prisma = require('../prismaClient');
 
+// semplice mask ricorsivo
 function maskSensitive(obj) {
   if (!obj) return null;
   const copy = JSON.parse(JSON.stringify(obj));
   const sensitive = ['password','pwd','cardnumber','cvv','token','authorization','refreshToken'];
-  function walk(o){
+  function walk(o) {
     if (o && typeof o === 'object') {
       for (const k of Object.keys(o)) {
         try {
@@ -24,10 +25,14 @@ function metaToString(meta) {
   if (typeof meta === 'string') {
     try { JSON.parse(meta); return meta; } catch (e) { return JSON.stringify({ raw: String(meta) }); }
   }
-  try { return JSON.stringify(maskSensitive(meta)); } catch (e) { return JSON.stringify({ raw: String(meta) }); }
+  try {
+    return JSON.stringify(maskSensitive(meta));
+  } catch (e) {
+    return JSON.stringify({ raw: String(meta) });
+  }
 }
 
-async function logAudit({ action, actorHostId = null, entityType = '', entityId = null, meta = null, req = null, status = null, service = null }) {
+async function logAudit({ action, actorHostId = null, entityType = null, entityId = null, meta = null, req = null, status = null, service = null }) {
   try {
     const metaStr = metaToString(meta);
     const traceId = (req && req.traceId) || crypto.randomUUID();
@@ -37,8 +42,8 @@ async function logAudit({ action, actorHostId = null, entityType = '', entityId 
   data: {
     actorHostId: actorHostId || null,
     action,
-    entityType,
-    entityId: entityId != null ? Number(entityId) : null,
+    entityType: entityType || '',
+    entityId: entityId != null ? String(entityId) : null,
     meta: metaStr,
     traceId: traceId || null,
     ip: ip || null,
@@ -46,10 +51,9 @@ async function logAudit({ action, actorHostId = null, entityType = '', entityId 
     service: service || null
   }
 });
-
-return traceId;
+    return traceId;
   } catch (e) {
-    console.error('audit.log error', e);
+    console.error('logAudit error', e);
   }
 }
 

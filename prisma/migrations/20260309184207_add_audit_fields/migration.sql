@@ -1,0 +1,5 @@
+-- AlterTable
+ALTER TABLE "Audit" ADD COLUMN "ip" TEXT;
+ALTER TABLE "Audit" ADD COLUMN "service" TEXT;
+ALTER TABLE "Audit" ADD COLUMN "traceId" TEXT;
+ALTER TABLE "Audit" ADD COLUMN "userAgent" TEXT;

@@ -1,0 +1,49 @@
+<p>Hai ricevuto una nuova richiesta per l'esperienza <strong>{{experienceTitle}}</strong> (ID: {{experienceId}}).</p>
+
+<div class="meta">
+  <div class="two-col">
+    <div class="col"><strong>Località:</strong> {{locationName}}</div>
+    <div class="col"><strong>Host:</strong> {{hostName}}</div>
+  </div>
+  <div class="two-col" style="margin-top:8px;">
+    <div class="col"><strong>Tipo:</strong> {{experienceType}}</div>
+    <div class="col"><strong>Livello:</strong> {{experienceLevel}}</div>
+  </div>
+  <div class="two-col" style="margin-top:8px;">
+    <div class="col"><strong>Prezzo base:</strong> {{price}}</div>
+    <div class="col"><strong>Durata:</strong> {{duration}}</div>
+  </div>
+</div>
+
+<ul>
+  <li><strong>Da:</strong> {{userName}} &lt;{{userEmail}}&gt;</li>
+  <li><strong>Data richiesta:</strong> {{requestedDate}}</li>
+  <li><strong>Fascia oraria:</strong> {{requestedSlot}}</li>
+  <li><strong>Partecipanti:</strong> {{participants}}</li>
+  <li><strong>Note cliente:</strong> {{notes}}</li>
+</ul>
+
+<p class="muted">Dettagli centro:</p>
+<ul>
+  <li><strong>Nome:</strong> {{hostName}}</li>
+  <li><strong>Email:</strong> {{hostEmail}}</li>
+  <li><strong>Telefono:</strong> {{hostPhone}}</li>
+  <li><strong>Sito:</strong> <a href="{{hostWebsite}}" target="_blank">{{hostWebsite}}</a></li>
+  <li><strong>Indirizzo:</strong> {{hostLocation}}</li>
+</ul>
+
+<p>
+  <a class="btn" href="{{hostPanelUrl}}">Apri pannello host</a>
+  <a class="btn" href="{{experienceUrl}}" style="background:#698cdd;margin-left:8px;">Vedi esperienza</a>
+</p>
+
+<p class="muted" style="margin-top:12px;">
+  <strong>ID richiesta:</strong> {{requestId}} &nbsp; • &nbsp;
+  <strong>Stato:</strong> {{requestStatus}} &nbsp; • &nbsp;
+  <strong>Timestamp:</strong> {{createdAt}}
+</p>
+
+<div class="footer">
+  Hub4Scuba — Non cadere nella rete, fanne parte!<br>
+  <span class="muted">Questa è una email di test / demo.</span>
+</div>

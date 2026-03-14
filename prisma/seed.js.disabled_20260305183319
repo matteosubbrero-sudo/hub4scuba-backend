@@ -1,0 +1,61 @@
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
+
+async function main() {
+  // Crea un host demo
+  const host = await prisma.host.create({
+    data: {
+      name: "Diving Demo Center",
+      email: "host@demo.local",
+      password: "demo-password", // demo only: in produzione HASHARE la password
+      status: "APPROVED"
+    }
+  });
+
+  // Crea alcune esperienze demo
+  await prisma.experience.createMany({
+    data: [
+      {
+        title: "Discovery Dive Amalfi - Principianti",
+        description: "Introduzione al mondo subacqueo, guida certificata, attrezzatura inclusa.",
+        locationName: "Amalfi, IT",
+        priceBase: 70,
+        durationMinutes: 120,
+        type: "RECREATIONAL",
+        level: "BEGINNER",
+        hostId: host.id
+      },
+      {
+        title: "Immersione Relitto Capo Milazzo",
+        description: "Immersione su relitto adatta a sub avanzati, guida esperta.",
+        locationName: "Milazzo, IT",
+        priceBase: 95,
+        durationMinutes: 180,
+        type: "RECREATIONAL",
+        level: "ADVANCED",
+        hostId: host.id
+      },
+      {
+        title: "Snorkeling Barriera di Tenerife",
+        description: "Snorkeling guidato per tutta la famiglia, fondali ricchi di fauna.",
+        locationName: "Tenerife, ES",
+        priceBase: 45,
+        durationMinutes: 90,
+        type: "SNORKELING",
+        level: "BEGINNER",
+        hostId: host.id
+      }
+    ]
+  });
+
+  console.log("Seed completed.");
+}
+
+main()
+  .catch((e) => {
+    console.error(e);
+    process.exit(1);
+  })
+  .finally(async () => {
+    await prisma.$disconnect();
+  });
