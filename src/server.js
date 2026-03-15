@@ -639,7 +639,7 @@ if (bookingTemplate) {
   htmlBody = '<p>Nuova richiesta per ' + tplData.experienceTitle + ' (id:' + String(tplData.experienceId) + ')</p><p>Da: ' + tplData.userName + ' &lt;' + tplData.userEmail + '&gt;</p>';
 }
 
-// Send emails
+// Send emails DA RIPRISTINARE DOPO I TEST
 try {
   if (!transporter) {
     console.warn('Transporter not ready, skipping email');
