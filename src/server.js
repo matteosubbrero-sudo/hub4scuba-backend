@@ -94,7 +94,10 @@ async function initMailer() {
     console.error('Mailer init error', e);
   }
 }
-initMailer().catch(err => console.error('Mailer init error', err));
+if (process.env.NODE_ENV !== 'test' && process.env.DISABLE_EMAILS !== '1') {
+  initMailer().catch(err => console.error('Mailer init error', err));
+}
+//initMailer().catch(err => console.error('Mailer init error', err));
 
 // Load Handlebars template
 let bookingTemplate;
