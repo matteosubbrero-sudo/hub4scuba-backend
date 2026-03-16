@@ -27,7 +27,8 @@ jobs:
         run: |
           echo "DATABASE_URL=file:./prisma/dev.db" > .env
           echo "DISABLE_EMAILS=1" >> .env
-          
+          echo "REDIS_URL=" >> .env
+
       - name: Generate Prisma client
         run: npx prisma generate
 
