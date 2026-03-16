@@ -38,6 +38,7 @@ jobs:
       - name: Run tests
         env:
           NODE_ENV: test
+          CI_TOKEN: ${{ secrets.HUB4SCUBA_CI_TOKEN }}
         run: npm test
 
       - name: Upload test results
