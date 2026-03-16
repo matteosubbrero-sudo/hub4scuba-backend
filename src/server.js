@@ -759,4 +759,5 @@ res.status(204).end();
 });
 
 const port = process.env.PORT || 4000;
-app.listen(port, function() { console.log('Server listening on http://localhost:' + port); });
+if (process.env.NODE_ENV !== 'test') { app.listen(port, function() { console.log('Server listening on http://localhost:' + port); }); }
+//app.listen(port, function() { console.log('Server listening on http://localhost:' + port); });  riga commentata per i test
