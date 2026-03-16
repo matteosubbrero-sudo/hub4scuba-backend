@@ -23,13 +23,15 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma client
-        run: npx prisma generate
-
       - name: Prepare environment (SQLite)
         run: |
           echo "DATABASE_URL=file:./prisma/dev.db" > .env
           echo "DISABLE_EMAILS=1" >> .env
+          
+      - name: Generate Prisma client
+        run: npx prisma generate
+
+      
 
       - name: Run migrations (SQLite)
         run: npx prisma migrate deploy
