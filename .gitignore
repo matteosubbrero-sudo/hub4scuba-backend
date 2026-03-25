@@ -4,3 +4,7 @@ node_modules
 
 .bak
 /prisma/dev.db
+
+*.bak
+
+*.bak
