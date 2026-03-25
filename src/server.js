@@ -29,9 +29,6 @@ const {
 const prisma = new PrismaClient();
 const app = express();
 
-// Redis client
-const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
-
 // CORS and middlewares
 const corsOptions = {
   origin: process.env.FRONTEND_ORIGIN || 'http://localhost:3000',
@@ -43,6 +40,9 @@ app.use(cookieParser());
 app.use(auditRequest);
 app.use('/admin/static', express.static(path.join(__dirname, '../public/admin')));
 
+/*
+// Redis client
+const redis = new Redis(process.env.REDIS_URL || 'redis://127.0.0.1:6379');
 
 // Rate limiter for login (Redis-backed if available, otherwise in-memory)
 let RedisStore = null;
@@ -65,7 +65,49 @@ if (RedisStore) {
       console.warn('RedisStore could not be created, falling back to in-memory rate limiter.');
     }
   }
+} */
+
+  const redisUrl = process.env.REDIS_URL || ''; //usato nel test su CI
+let redis = null;
+if (redisUrl) {
+  try {
+    redis = new Redis(redisUrl);
+    console.log('Redis client initialized for', redisUrl);
+  } catch (e) {
+    console.warn('Redis client could not be initialized, falling back to in-memory stores.', e);
+    redis = null;
+  }
+} else {
+  console.log('No REDIS_URL provided — using in-memory rate limiting fallback.');
 }
+
+// Rate limiter Redis store setup (guardato da redis non-null)
+let RedisStore = null;
+try {
+  RedisStore = require('rate-limit-redis');
+} catch (err) {
+  RedisStore = null;
+  console.warn('rate-limit-redis not available, falling back to in-memory rate limiter.');
+}
+
+let limiterStore = null;
+if (RedisStore && redis) {
+  try {
+    limiterStore = new RedisStore({ client: redis });
+  } catch (e1) {
+    try {
+      limiterStore = new RedisStore({ sendCommand: (...args) => redis.call(...args) });
+    } catch (e2) {
+      limiterStore = null;
+      console.warn('RedisStore could not be created, falling back to in-memory rate limiter.');
+    }
+  }
+} else {
+  limiterStore = null;
+}
+
+
+
 
 const loginLimiter = rateLimit({
   store: limiterStore || undefined, // undefined means express-rate-limit uses in-memory store
